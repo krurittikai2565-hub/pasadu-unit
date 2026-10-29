@@ -331,7 +331,7 @@ function seedSample(){db=blank();db.sample=true;const s=db.settings;s.unit='แ�
 
 /* ============ เมนู ============ */
 const VIEWS=[['ภาพรวม',[['dash','หน้าหลัก']]],
- ['เบิกจากงานพัสดุ',[['reqs','ใบเบิก / ใบส่งคืน'],['register','ทะเบียนใบเบิก']]],
+ ['เบิกจากงานพัสดุ',[['reqs','ใบเบิก'],['rets','ใบส่งคืน'],['register','ทะเบียนใบเบิก']]],
  ['จ่ายภายในหน่วย',[['inner','ใบเบิกภายใน']]],
  ['บัญชีคุม',[['items','บัญชีคุมวัสดุ'],['assets','บัญชีคุมครุภัณฑ์']]],
  ['สรุปและตรวจสอบ',[['count','ตรวจนับประจำปี'],['reports','รายงานและแบบพิมพ์']]],
@@ -359,7 +359,7 @@ V.dash=()=>{const{L}=mledger();const{st}=aState();const fy=fyOf(today());
   const ym=today().slice(0,7);const innerM=db.inner.filter(d=>d.date.startsWith(ym));
   const byRoom={};live.forEach(a=>{const h=st[a.id].holder||'ยังไม่จ่าย (เก็บที่หน่วย)';byRoom[h]=(byRoom[h]||0)+1});
   return `<div class="top"><div><h1>${esc(unitName())}</h1><div class="sub">หน่วยเบิก · ${esc(db.settings.org)} · ปีงบประมาณ ${fy}</div></div>
-  <div class="row"><button class="btn pri" data-act="req-new" data-cls="M" id="dReqM">+ ใบเบิกวัสดุ</button><button class="btn" data-act="req-new" data-cls="A" id="dReqA">+ ใบเบิกครุภัณฑ์</button><button class="btn" data-act="inner-new" id="dInner">+ ใบเบิกภายใน</button></div></div>
+  <div class="row"><button class="btn pri" data-act="req-new" data-cls="M" id="dReqM">+ ใบเบิกวัสดุ</button><button class="btn" data-act="req-new" data-cls="A" id="dReqA">+ ใบเบิกครุภัณฑ์</button><button class="btn" data-act="inner-new" id="dInner">+ ใบเบิกภายใน</button><button class="btn" data-act="ret-new" id="dRet">+ ใบส่งคืน</button></div></div>
   <div class="grid g4">
    <div class="panel kpi"><div class="l">ใบเบิกรอรับ / ค้างรับ</div><div class="n" style="color:${pend.length?'var(--warn)':'inherit'}">${fi(pend.length)}</div><div class="sub">ใบเบิกที่ส่งงานพัสดุแล้วยังได้ของไม่ครบ</div></div>
    <div class="panel kpi"><div class="l">วัสดุในบัญชีคุม</div><div class="n">${fi(db.items.length)}</div><div class="sub">${low.length?`<span style="color:var(--bad)">${fi(low.length)} รายการถึงจุดเบิกเพิ่ม</span>`:'ไม่มีรายการต่ำกว่าจุดเบิก'}</div></div>
@@ -376,6 +376,7 @@ function reqLinesBrief(r){const names=r.lines.map(l=>r.cls==='M'?(itemOf(l.iid)?
 
 /* ============ ใบเบิก / ใบส่งคืน (กับงานพัสดุ) ============ */
 let rqTab='all';
+V.rets=()=>{const t=rqTab;rqTab='ret';const h=V.reqs().replace('<h1>ใบเบิก / ใบส่งคืน</h1>','<h1>ใบส่งคืน</h1>').replace(/<div class="tabs">[\s\S]*?<\/div>/,'').replace('ส่งถึง','ส่งคืนให้');rqTab=t;return h};
 V.reqs=()=>{const list=db.reqs.filter(r=>r.kind!=='open'&&(rqTab==='all'||(rqTab==='pend'?['รอรับ','ค้างรับ'].includes(reqStatus(r)):rqTab==='ret'?r.kind==='ret':r.kind==='req'&&r.cls===rqTab))).sort((a,b)=>-byDate(a,b));
   const tab=(k,l)=>`<button class="${rqTab===k?'on':''}" data-act="rq-tab" data-t="${k}" id="t_${k}">${l}</button>`;
   return `<div class="top"><div><h1>ใบเบิก / ใบส่งคืน</h1><div class="sub">เอกสารที่หน่วยเบิกส่งถึง ${esc(db.settings.central)} (แบบ พ.3101) ลงทะเบียนใบเบิกให้อัตโนมัติ</div></div>
@@ -694,7 +695,7 @@ V.settings=()=>{const s=db.settings;return `<div class="top"><div><h1>ตั้�
   <label class="w6">ห้อง / งาน / ผู้ใช้ภายในหน่วย (บรรทัดละ 1)<textarea name="rooms" id="f_rooms" rows="6">${esc(db.rooms.join('\n'))}</textarea></label></div>
   <div class="row" style="justify-content:flex-end;margin-top:12px"><button class="btn pri" id="setSave">บันทึกการตั้งค่า</button></div></form>
  <div class="grid" style="align-content:start">
-  ${GAS?`<div class="panel"><h2>ข้อมูลเก็บใน Google Sheet</h2><p class="sub">ทุกคนที่เปิดลิงก์ระบบนี้ใช้ข้อมูลชุดเดียวกัน บันทึกอัตโนมัติทุกครั้งที่แก้ไข${gas.user?' · ผู้ใช้ '+esc(gas.user):''}</p><div class="row"><a class="btn" href="${esc(gas.url)}" target="_blank" rel="noopener" id="gsLink">เปิด Google Sheet ข้อมูล</a>${API_MODE?'<button class="btn" data-act="api-reset" id="apiReset">เปลี่ยนการเชื่อมต่อ / ออกจากระบบ</button>':''}</div></div>`:`<div class="panel"><h2>เก็บข้อมูลลงไฟล์ (เช่น ใน Google Drive)</h2>${fsOK?`<p class="sub">เลือกไฟล์ในโฟลเดอร์ Google Drive ของเครื่องนี้ ระบบจะบันทึกทับให้ทุกครั้งที่แก้ไข ข้อมูลจึงไม่หายเมื่อล้างเบราว์เซอร์</p>
+  ${GAS?`<div class="panel"><h2>ข้อมูลเก็บใน Google Sheet</h2><p class="sub">ทุกคนที่เปิดลิงก์ระบบนี้ใช้ข้อมูลชุดเดียวกัน บันทึกอัตโนมัติทุกครั้งที่แก้ไข${gas.user?' · ผู้ใช้ '+esc(gas.user):''}</p><div class="row"><a class="btn" href="${esc(gas.url)}" target="_blank" rel="noopener" id="gsLink">เปิด Google Sheet ข้อมูล</a>${API_MODE?'<button class="btn" data-act="api-reset" id="apiReset">สลับ / เพิ่มฐานข้อมูล</button>':''}</div></div>`:`<div class="panel"><h2>เก็บข้อมูลลงไฟล์ (เช่น ใน Google Drive)</h2>${fsOK?`<p class="sub">เลือกไฟล์ในโฟลเดอร์ Google Drive ของเครื่องนี้ ระบบจะบันทึกทับให้ทุกครั้งที่แก้ไข ข้อมูลจึงไม่หายเมื่อล้างเบราว์เซอร์</p>
    <div class="row">${fileHandle?`<span class="sub">ไฟล์: <b>${esc(fileHandle.name)}</b> ${filePerm?'(บันทึกอัตโนมัติอยู่)':'(ต้องอนุญาตอีกครั้ง)'}</span>`:''}${fileHandle&&!filePerm?'<button class="btn pri" data-act="fs-regrant" id="fsRe">อนุญาตและโหลดจากไฟล์</button>':''}<button class="btn" data-act="fs-link" id="fsLink">${fileHandle?'เปลี่ยนไฟล์':'เลือกไฟล์ที่จะบันทึก'}</button></div>`:'<p class="sub">เบราว์เซอร์นี้ไม่รองรับการบันทึกลงไฟล์อัตโนมัติ ใช้ Chrome หรือ Edge บนคอมพิวเตอร์ หรือดาวน์โหลดไฟล์สำรองแทน</p>'}</div>`}
   <div class="panel"><h2>สำรองและกู้คืน</h2><p class="sub">กู้คืนจากไฟล์สำรองของระบบนี้ หรือนำเข้าไฟล์สำรองของโปรแกรม "ระบบคุมวัสดุ (KumWatsadu)" เป็นวัสดุ ยอดรับ และใบเบิกภายใน</p>
    <div class="row"><button class="btn pri" data-act="backup" id="bk">${GAS_UI?'บันทึกไฟล์สำรองลง Drive':'ดาวน์โหลดไฟล์สำรอง'}</button><button class="btn" data-act="restore" id="rs">กู้คืน / นำเข้าจากไฟล์...</button></div></div>
@@ -885,8 +886,14 @@ function xls3101(r,asHtml){const s=db.settings,ret=r.kind==='ret',isA=r.cls==='A
 const GAS_UI=!!(window.google&&google.script&&google.script.run);
 const API_MODE=!GAS_UI&&!!window.PASADU_API;
 const GAS=GAS_UI||API_MODE;
-const API_KEY_STORE='pasadu-api';
-let api={url:'',key:''};try{api=Object.assign(api,JSON.parse(localStorage.getItem(API_KEY_STORE)||'{}'))}catch(e){}
+/* หลายฐานข้อมูล: แต่ละหน่วยเบิก (หัวหน้าหน่วยเบิกแต่ละคน) มี Google Sheet + รหัสผ่านของตัวเอง เก็บรายการไว้ในเบราว์เซอร์ */
+const CONN_STORE='pasadu-conns';
+let conns={list:[],current:'',auto:true};
+try{const c=JSON.parse(localStorage.getItem(CONN_STORE)||'null');if(c&&Array.isArray(c.list))conns=Object.assign(conns,c);
+  else{const old=JSON.parse(localStorage.getItem('pasadu-api')||'null');if(old&&old.url){const id='c'+Date.now().toString(36);conns.list=[{id,name:'',url:old.url,key:old.key}];conns.current=id}}}catch(e){}
+const connSave=()=>{try{localStorage.setItem(CONN_STORE,JSON.stringify(conns))}catch(e){}};
+const connCur=()=>conns.list.find(c=>c.id===conns.current)||null;
+let api={url:'',key:''};
 const GTITLE={items:'วัสดุ',assets:'ครุภัณฑ์',reqs:'ใบเบิก-ใบส่งคืน',inner:'ใบเบิกภายใน',repairs:'ประวัติซ่อม',condLogs:'ปรับสภาพ',counts:'ตรวจนับ'};
 const GCOLS={
   items:[['ชื่อวัสดุ',r=>r.name],['ประเภท',r=>r.kind],['หมวด',r=>r.group],['หน่วยนับ',r=>r.unit],['จุดเบิกเพิ่ม',r=>r.min],['ที่เก็บ',r=>r.place]],
@@ -902,12 +909,28 @@ async function apiCall(fn,args,conn){let r;try{r=await fetch(conn.url,{method:'P
   catch(e){throw new Error('ติดต่อ Apps Script ไม่ได้ ตรวจ URL และการตั้งค่า "ผู้ที่มีสิทธิ์เข้าถึง: ทุกคน"')}
   if(!r.ok)throw new Error('Apps Script ตอบกลับ HTTP '+r.status);let j;try{j=await r.json()}catch(e){throw new Error('Apps Script ไม่ได้ตอบเป็นข้อมูลระบบ ตรวจว่าวาง Code.gs ฉบับใหม่และ Deploy แล้ว')}
   if(j.error)throw new Error(j.error);return j.ok}
-function apiSetup(msg){$('#nav').innerHTML=`<div class="brand"><div class="seal">บ</div><div><b>พัสดุหน่วยเบิก</b><small>เชื่อมต่อ Google Sheet</small></div></div>`;
-  $('#main').innerHTML=`<div class="panel" style="max-width:640px;margin:30px auto"><h1 style="margin-bottom:6px">เชื่อมต่อฐานข้อมูล</h1><p class="sub">ใส่ URL เว็บแอป Apps Script ของหน่วยเบิก และรหัสผ่านที่ตั้งไว้ใน Code.gs (บรรทัด API_KEY) ระบบจะจำไว้ในเบราว์เซอร์นี้</p>
-   ${msg?`<p style="color:var(--bad)">${esc(msg)}</p>`:''}<form id="apiForm" class="fg" style="margin-top:10px">${F('url','URL เว็บแอป (ลงท้ายด้วย /exec)',api.url,'w6','url','required placeholder="https://script.google.com/macros/s/.../exec"')}${F('key','รหัสผ่านของหน่วย',api.key,'w6','password','required autocomplete="current-password"')}
-   <div class="row" style="grid-column:span 6;justify-content:flex-end"><button class="btn pri" id="apiOk">เชื่อมต่อ</button></div></form></div>`;
+/* หน้าเลือก / เพิ่มฐานข้อมูล */
+function apiSetup(msg){$('#nav').innerHTML=`<div class="brand"><div class="seal">บ</div><div><b>พัสดุหน่วยเบิก</b><small>เลือกฐานข้อมูล</small></div></div>`;
+  const L=conns.list;
+  $('#main').innerHTML=`<div style="max-width:720px;margin:24px auto;display:grid;gap:14px">
+   <div><h1>เลือกฐานข้อมูลหน่วยเบิก</h1><div class="sub">หัวหน้าหน่วยเบิกแต่ละคนมี Google Sheet และรหัสผ่านของตัวเอง เพิ่มไว้ได้หลายฐาน แล้วเลือกเปิดฐานที่ต้องการ</div></div>
+   ${msg?`<div class="panel" style="color:var(--bad);border-color:var(--bad)">${esc(msg)}</div>`:''}
+   ${L.length?`<div class="panel"><h2>ฐานข้อมูลที่บันทึกไว้ (${L.length})</h2><div class="pick" style="max-height:none">${L.map(c=>`<label style="cursor:pointer"><input type="radio" style="width:auto;flex:none" name="connPick" value="${c.id}" id="cp_${c.id}" ${c.id===conns.current||(!conns.current&&c===L[0])?'checked':''}><span style="flex:1;min-width:0"><b>${esc(c.name||'(ยังไม่มีชื่อ)')}</b><br><span class="sub code" style="font-size:11px">${esc(c.url.replace(/^https:\/\/script\.google\.com\/macros\/s\//,'…/').slice(0,60))}</span></span><button type="button" class="btn sm" data-act="conn-edit" data-id="${c.id}" id="ce_${c.id}">แก้ไข</button><button type="button" class="btn sm danger" data-act="conn-del" data-id="${c.id}" id="cx_${c.id}">ลบ</button></label>`).join('')}</div>
+    <div class="row" style="justify-content:space-between;margin-top:10px"><label class="row" style="gap:8px;cursor:pointer"><input type="checkbox" id="connAuto" ${conns.auto?'checked':''}> เปิดฐานที่เลือกอัตโนมัติเมื่อเข้าเว็บครั้งต่อไป</label><button class="btn pri" data-act="conn-open" id="connOpen">เปิดฐานข้อมูลนี้</button></div></div>`:''}
+   <form class="panel" id="apiForm"><h2 id="apiFormTitle">${L.length?'เพิ่มฐานข้อมูล':'เชื่อมต่อฐานข้อมูลแรก'}</h2><input type="hidden" name="id" id="f_cid" value="">
+    <div class="fg">${F('name','ชื่อเรียก (ว่างไว้จะใช้ชื่อหน่วยเบิกจากฐาน)','','w6','text','placeholder="เช่น แผนกวิชาช่างยนต์ - หัวหน้าแผนก"')}
+    ${F('url','URL เว็บแอป Apps Script (ลงท้ายด้วย /exec)','','w6','url','required list="urlList" placeholder="https://script.google.com/macros/s/.../exec"')}${F('key','รหัสผ่านของหน่วย (ตั้งที่ Google Sheet > เมนู ระบบพัสดุ)','','w6','password','required autocomplete="off"')}</div>
+    <datalist id="urlList">${[...new Set(L.map(c=>c.url))].map(u=>`<option value="${esc(u)}">`).join('')}</datalist>
+    <div class="row" style="justify-content:flex-end;margin-top:10px"><button type="button" class="btn" data-act="conn-new" id="connNew" ${L.length?'':'hidden'}>ล้างช่อง</button><button class="btn pri" id="apiOk">ตรวจสอบและบันทึก</button></div></form></div>`;
+  $('#connAuto')?.addEventListener('change',e=>{conns.auto=e.target.checked;connSave()});
   $('#apiForm').addEventListener('submit',async e=>{e.preventDefault();const o=Object.fromEntries(new FormData(e.target));const conn={url:o.url.trim(),key:o.key};const b=$('#apiOk');b.disabled=true;b.textContent='กำลังตรวจสอบ...';
-    try{await apiCall('getVersion',[],conn);api=conn;try{localStorage.setItem(API_KEY_STORE,JSON.stringify(api))}catch(err){}gasBoot()}catch(err){b.disabled=false;b.textContent='เชื่อมต่อ';apiSetup(err.message)}})}
+    try{await apiCall('getVersion',[],conn);const id=o.id||('c'+Date.now().toString(36));const ex=conns.list.find(c=>c.id===id);
+      if(ex)Object.assign(ex,{name:o.name.trim(),url:conn.url,key:conn.key});else conns.list.push({id,name:o.name.trim(),url:conn.url,key:conn.key});
+      conns.current=id;connSave();connOpen(id)}
+    catch(err){b.disabled=false;b.textContent='ตรวจสอบและบันทึก';toast(err.message,true)}})}
+function connOpen(id){const c=conns.list.find(x=>x.id===id);if(!c){apiSetup();return}conns.current=id;connSave();api={url:c.url,key:c.key};gasBoot()}
+async function connSwitch(){if(gas.timer||gas.busy||gas.state!=='ready'){clearTimeout(gas.timer);gas.timer=null;await gasFlush();let n=0;while(gas.busy&&n++<40)await new Promise(r=>setTimeout(r,250))}
+  if(gas.state==='error'){toast('ยังบันทึกข้อมูลล่าสุดไม่สำเร็จ ลองอีกครั้งก่อนสลับฐาน',true);return}closeOverlays();apiSetup()}
 const gasMeta=()=>({settings:db.settings,rooms:db.rooms,counters:db.counters,sample:db.sample,app:'pasadu-unit',version:1});
 function gasSnapAll(){gas.snap={};for(const k in GTITLE)gas.snap[k]=JSON.stringify(db[k]);gas.snap.meta=JSON.stringify(gasMeta())}
 function gasPayload(){const sheets={},sent={};
@@ -927,9 +950,9 @@ async function gasFlush(){if(gas.busy){gas.again=true;return}const{payload,sent}
   catch(e){gas.state='error';gas.err=String(e&&e.message||e);toast('บันทึกลง Google Sheet ไม่สำเร็จ: '+gas.err+' ระบบจะลองใหม่',true);setTimeout(gasFlush,8000)}
   finally{gas.busy=false;renderNav();if(gas.again){gas.again=false;gasFlush()}}}
 function closeOverlays(){try{dlg.close()}catch(e){}$('#pv').hidden=true}
-function gasBadge(){const t={ready:'● บันทึกใน Google Sheet แล้ว',pending:'○ รอบันทึก...',saving:'○ กำลังบันทึก...',error:'● บันทึกไม่สำเร็จ กำลังลองใหม่'}[gas.state];return `<span class="filebadge" style="${gas.state==='error'?'background:#b42318':''}">${t}</span>`}
+function gasBadge(){if(API_MODE&&db){const c=connCur();if(c&&!c.name&&db.settings.unit){c.name=db.settings.unit;connSave()}}const t={ready:'● บันทึกใน Google Sheet แล้ว',pending:'○ รอบันทึก...',saving:'○ กำลังบันทึก...',error:'● บันทึกไม่สำเร็จ กำลังลองใหม่'}[gas.state];return `<span class="filebadge" style="${gas.state==='error'?'background:#b42318':''}">${t}</span>`+(API_MODE?`<div style="padding:10px 8px 0"><div class="sub" style="color:#c9d4e3;font-size:12px">ฐานข้อมูล: ${esc(connCur()?.name||unitName())}${conns.list.length>1?` (${conns.list.length} ฐาน)`:''}</div><button class="btn sm" data-act="conn-switch" id="connSwitch" style="margin-top:6px">สลับ / เพิ่มฐานข้อมูล</button></div>`:'')}
 async function gasBoot(){$('#nav').innerHTML='';$('#main').innerHTML='<div class="panel empty" style="margin-top:40px">กำลังโหลดข้อมูลจาก Google Sheet...</div>';
-  try{const res=await gasRun('getData');db=res.db?Object.assign(blank(),res.db):blank();gas.ver=res.version;gas.url=res.url;gas.user=res.user;gasSnapAll();
+  try{const res=await gasRun('getData');db=res.db?Object.assign(blank(),res.db):blank();gas.ver=res.version;gas.url=res.url;gas.user=res.user;gasSnapAll();if(API_MODE){const c=connCur();if(c&&!c.name&&db.settings.unit){c.name=db.settings.unit;connSave()}}
     if(!res.db){gas.snap={};gasQueue()}/* ชีตใหม่: สร้างแผ่นงานทั้งหมด */
     render();if(!db.settings.unit&&!db.sample)location.hash='#settings'}
   catch(e){if(API_MODE){apiSetup('เปิดข้อมูลไม่ได้: '+(e&&e.message||e));return}$('#main').innerHTML=`<div class="panel empty" style="margin-top:40px">เปิดข้อมูลจาก Google Sheet ไม่ได้: ${esc(e&&e.message||e)}<br>ตรวจสิทธิ์การเข้าถึงสคริปต์ แล้วโหลดหน้าใหม่</div>`}}
@@ -941,7 +964,11 @@ function blobToB64(blob){return new Promise((res,rej)=>{const r=new FileReader()
 function showLink(url,label){const a=$('#pvLink');a.href=url;a.textContent=label;a.hidden=false}
 const TH2AR=s=>String(s).replace(/[๐-๙]/g,c=>'๐๑๒๓๔๕๖๗๘๙'.indexOf(c));
 function tableToArrays(t){const out=[];for(const tr of t.rows){const row=[];for(const td of tr.cells){let v=td.innerText.replace(/\s+\n/g,'\n').trim();const n=TH2AR(v).replace(/,/g,'');if(/^-?\d+(\.\d+)?$/.test(n)&&!/^0\d/.test(n))v=Number(n);row.push(v);for(let i=1;i<(td.colSpan||1);i++)row.push('')}out.push(row)}return out}
-if(GAS){ACT['api-reset']=el=>confirm2(el,()=>{try{localStorage.removeItem(API_KEY_STORE)}catch(e){}api={url:'',key:''};apiSetup()});
+if(GAS){ACT['api-reset']=()=>connSwitch();ACT['conn-switch']=()=>connSwitch();
+  ACT['conn-open']=()=>{const r=document.querySelector('input[name=connPick]:checked');if(r)connOpen(r.value)};
+  ACT['conn-del']=el=>confirm2(el,()=>{conns.list=conns.list.filter(c=>c.id!==el.dataset.id);if(conns.current===el.dataset.id)conns.current='';connSave();apiSetup()});
+  ACT['conn-edit']=el=>{const c=conns.list.find(x=>x.id===el.dataset.id);$('#f_cid').value=c.id;$('#f_name').value=c.name;$('#f_url').value=c.url;$('#f_key').value=c.key;$('#apiFormTitle').textContent='แก้ไข: '+(c.name||'ฐานข้อมูล');$('#connNew').hidden=false;$('#f_name').focus()};
+  ACT['conn-new']=()=>{['#f_cid','#f_name','#f_url','#f_key'].forEach(x=>$(x).value='');$('#apiFormTitle').textContent='เพิ่มฐานข้อมูล'};
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)gasRefresh()});setInterval(gasRefresh,45000)}
 if(GAS_UI){
   ACT['pv-pdf']=async el=>{if(!pvPdf)return;el.disabled=true;el.textContent='กำลังบันทึกลง Drive...';
@@ -956,7 +983,7 @@ if(GAS_UI){
   ACT['backup']=async el=>{const d=new Date();try{const r=await gasRun('saveFile',`สำรองพัสดุ_${(db.settings.unit||'หน่วยเบิก')}_${d.getFullYear()+543}-${pad(d.getMonth()+1,2)}-${pad(d.getDate(),2)}.json`,await blobToB64(new Blob([JSON.stringify(db)],{type:'application/json'})),'application/json');toast('บันทึกไฟล์สำรองลงโฟลเดอร์ "พัสดุหน่วยเบิก - เอกสาร" แล้ว')}catch(e){toast('สำรองไม่สำเร็จ: '+(e.message||e),true)}};
 }
 /* เริ่มระบบ */
-if(GAS_UI){$('#pvPdf').textContent='บันทึก PDF ลง Drive';$('#pvXls').textContent='เปิดเป็น Google Sheet';gasBoot()}else if(API_MODE){api.url&&api.key?gasBoot():apiSetup()}else standaloneBoot();
+if(GAS_UI){$('#pvPdf').textContent='บันทึก PDF ลง Drive';$('#pvXls').textContent='เปิดเป็น Google Sheet';gasBoot()}else if(API_MODE){const c=connCur();c&&conns.auto?connOpen(c.id):apiSetup()}else standaloneBoot();
 </script>
 </body>
 </html>
